@@ -82,7 +82,7 @@ let sortMode='score',tagFilter='';
 function renderList(){
   $('#cnt').textContent=CALLS.length+' שיחות שנסגרו';
   const L=$('#list');L.innerHTML='';
-  const tags=[...new Set(CALLS.flatMap(c=>(c.ins&&c.ins.tags)||[]))];
+  const cnt={};CALLS.forEach(c=>((c.ins&&c.ins.tags)||[]).forEach(t=>cnt[t]=(cnt[t]||0)+1));const tags=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]).slice(0,8);
   const bar=document.createElement('div');bar.id='bar';
   const mk=(txt,on,fn)=>{const b=document.createElement('button');b.textContent=txt;if(on)b.className='on';b.onclick=fn;bar.appendChild(b)};
   mk('הכי שווה להקשיב',sortMode==='score',()=>{sortMode='score';renderList()});
@@ -145,7 +145,7 @@ async function load(){
   const r=await fetch(API+'/data',{headers:{Authorization:'Bearer '+TOKEN}});
   if(r.status===401){logout();return false}
   CALLS=await r.json();renderList();$('#login').style.display='none';$('#out').style.display='';
-  if(CALLS.length)open(CALLS[0]);return true;
+  if(CALLS.length)open([...CALLS].sort((x,y)=>(y.ins?y.ins.score:0)-(x.ins?x.ins.score:0))[0]);return true;
 }
 function logout(){localStorage.removeItem('sc_token');TOKEN='';location.reload()}
 $('#out').onclick=logout;
