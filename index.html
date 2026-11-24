@@ -41,6 +41,17 @@ select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);bo
 .learn h3{color:#6fe0a0!important;margin-top:0!important}
 .note{font-size:12px;color:var(--warn);margin-top:6px}
 a{color:#8fc0ff}
+.score{display:inline-block;min-width:26px;text-align:center;font-weight:800;font-size:13px;padding:1px 7px;border-radius:9px;background:#1f5a38;color:#6fe0a0;margin-inline-start:8px}
+.score.mid{background:#4a3a10;color:#f3c35a}.score.low{background:#2a3550;color:#9fb0d4}
+#bar{padding:8px 14px;border-bottom:1px solid var(--line);display:flex;gap:6px;flex-wrap:wrap;position:sticky;top:0;background:var(--panel);z-index:2}
+#bar button{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:14px;padding:3px 11px;cursor:pointer;font-size:12px}
+#bar button.on{background:var(--acc);border-color:var(--acc)}
+.hl{font-size:13px;color:#cfe9da;margin-top:3px;line-height:1.4}
+.tl{display:block;width:100%;text-align:right;background:#0f2a1b;border:1px solid #1f5a38;color:var(--txt);border-radius:8px;padding:8px 10px;margin:6px 0;cursor:pointer;font:inherit;font-size:13.5px;line-height:1.5}
+.tl:hover{background:#15402a}.tl .t{color:#6fe0a0;font-weight:700;direction:ltr;display:inline-block;margin-inline-end:8px}
+.tl q{display:block;color:#a9d9bd;font-size:12.5px;margin-top:2px}.tl small{display:block;color:#b7c4dd;margin-top:3px}
+.seg.star{box-shadow:inset -3px 0 0 #6fe0a0}
+details{margin-top:14px}summary{cursor:pointer;color:#8fc0ff;font-size:14px}
 #login{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:50}
 #login form{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px;width:320px;display:flex;flex-direction:column;gap:12px}
 #login h2{margin:0 0 4px;font-size:20px}
@@ -67,34 +78,54 @@ const fmtDate=d=>{const [a,b]=d.split(' ');const [y,m,dd]=a.split('-');return dd
 const BORDER={'3282542051':'גבולי: סימון הסגירה במאנדיי נעשה ~16 דקות אחרי סוף השיחה (הלקוח קיבל קישור תשלום באמצע השיחה)'};
 const LEARN=['ביצועי הנציג','המלצות שיפור לנציג','משפטים שבנו אמון','הזדמנויות שהוחמצו'];
 const LEARN_TITLES={'ביצועי הנציג':'💪 מה הנציג עשה טוב','המלצות שיפור לנציג':'🎯 מה לשפר','משפטים שבנו אמון':'🤝 משפטים שבנו אמון','הזדמנויות שהוחמצו':'⚠️ הזדמנויות שהוחמצו'};
+let sortMode='score',tagFilter='';
 function renderList(){
   $('#cnt').textContent=CALLS.length+' שיחות שנסגרו';
   const L=$('#list');L.innerHTML='';
-  CALLS.forEach(c=>{
+  const tags=[...new Set(CALLS.flatMap(c=>(c.ins&&c.ins.tags)||[]))];
+  const bar=document.createElement('div');bar.id='bar';
+  const mk=(txt,on,fn)=>{const b=document.createElement('button');b.textContent=txt;if(on)b.className='on';b.onclick=fn;bar.appendChild(b)};
+  mk('הכי שווה להקשיב',sortMode==='score',()=>{sortMode='score';renderList()});
+  mk('לפי תאריך',sortMode==='date',()=>{sortMode='date';renderList()});
+  mk('הכל',!tagFilter,()=>{tagFilter='';renderList()});
+  tags.forEach(t=>mk(t,tagFilter===t,()=>{tagFilter=t;renderList()}));
+  L.appendChild(bar);
+  let arr=CALLS.filter(c=>!tagFilter||((c.ins&&c.ins.tags)||[]).includes(tagFilter));
+  arr.sort((x,y)=>sortMode==='score'?((y.ins?y.ins.score:0)-(x.ins?x.ins.score:0)||y.date.localeCompare(x.date)):y.date.localeCompare(x.date));
+  arr.forEach(c=>{
     const d=document.createElement('div');d.className='item';d.dataset.id=c.id;
-    d.innerHTML=`<b>${esc(c.client)}${BORDER[c.id]?'<span class="tag warn">גבולי</span>':''}</b><small>${fmtDate(c.date)} · ${Math.round(c.durMin)} דק׳ · ${esc(c.rep)}</small><br><small>${esc(c.trialStatus)}</small>`;
+    const sc=c.ins?`<span class="score ${c.ins.score>=7?'':c.ins.score>=5?'mid':'low'}">${c.ins.score}</span>`:'';
+    d.innerHTML=`<b>${esc(c.client)}${sc}${BORDER[c.id]?'<span class="tag warn">גבולי</span>':''}</b><small>${fmtDate(c.date)} · ${Math.round(c.durMin)} דק׳ · ${esc(c.rep)}</small>${c.ins?`<div class="hl">${esc(c.ins.headline)}</div>`:''}`;
     d.onclick=()=>open(c);L.appendChild(d);
   });
+  if(cur)document.querySelectorAll('.item').forEach(e=>e.classList.toggle('on',e.dataset.id===cur.id));
 }
 let cur=null,segEls=[],active=-1,follow=true;
 function open(c){
   cur=c;active=-1;follow=true;
   document.querySelectorAll('.item').forEach(e=>e.classList.toggle('on',e.dataset.id===c.id));
-  const learn=LEARN.map(h=>c.sections[h]?`<h3>${LEARN_TITLES[h]}</h3><p>${esc(c.sections[h])}</p>`:'').join('');
-  const rest=['התנגדויות','צרכים ובעיות','תגובה למחיר','שאלות מרכזיות של הלקוח','משימות המשך','מוצרים שעניינו'].map(h=>c.sections[h]?`<h3>${h}</h3><p>${esc(c.sections[h])}</p>`:'').join('');
+  const ins=c.ins;
+  const tlist=(arr,kind)=>(arr||[]).map(x=>`<button class="tl" data-t="${x.t}"><span class="t">${fmt(x.t)}</span>${kind==='q'?esc(x.q):'<b>'+esc(x.title)+'</b>'}${kind==='m'?`<q>״${esc(x.quote)}״</q>`:''}<small>${esc(x.why)}</small></button>`).join('');
+  const learn=ins?`<div class="learn"><h3>🎯 למה להקשיב לשיחה הזו</h3><p><b>${esc(ins.headline)}</b></p><p style="margin-top:4px;color:#a9d9bd">${esc(ins.bestFor)}</p>${(ins.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
+   ${ins.questions&&ins.questions.length?`<h3>❓ שאלות חזקות ששאל הנציג</h3>${tlist(ins.questions,'q')}`:''}
+   ${ins.moments&&ins.moments.length?`<h3>⭐ רגעים חזקים</h3>${tlist(ins.moments,'m')}`:''}`:'';
+  const rest=['התנגדויות','צרכים ובעיות','תגובה למחיר','שאלות מרכזיות של הלקוח','משימות המשך','מוצרים שעניינו','ביצועי הנציג','המלצות שיפור לנציג','משפטים שבנו אמון','הזדמנויות שהוחמצו'].map(h=>c.sections[h]?`<h3>${h}</h3><p>${esc(c.sections[h])}</p>`:'').join('');
   $('#view').innerHTML=`
    <div id="head"><h2>${esc(c.client)}</h2>
-    <div class="meta">${fmtDate(c.date)} · ${Math.round(c.durMin)} דקות · נציג: ${esc(c.rep)} · סגירה במאנדיי: ${fmtDate(c.closeMark)} · מצב היום: ${esc(c.leadStatus)} / ${esc(c.trialStatus)}</div>
+    <div class="meta">${fmtDate(c.date)} · ${Math.round(c.durMin)} דקות · נציג: ${esc(c.rep)}</div>
     ${BORDER[c.id]?`<div class="note">${BORDER[c.id]}</div>`:''}</div>
    <div id="player"><audio id="au" controls src="${API}/audio/${c.id}?token=${encodeURIComponent(TOKEN)}"></audio>
      <select id="sp"><option>0.75</option><option selected>1</option><option>1.25</option><option>1.5</option><option>2</option></select></div>
    <div id="body"><div id="tr"></div>
-    <div id="side"><h3>📝 סיכום</h3><p>${esc(c.summary)}</p><div class="learn">${learn}</div>${rest}</div></div>`;
+    <div id="side">${learn}<details><summary>עוד מניתוח ה-AI (סיכום, התנגדויות, ביצועי הנציג...)</summary><h3>📝 סיכום</h3><p>${esc(c.summary)}</p>${rest}</details></div></div>`;
   const tr=$('#tr');segEls=c.segments.map((s,i)=>{
     const e=document.createElement('div');e.className='seg '+s.who;
     e.innerHTML=`<span class="tm">${fmt(s.s)}</span><span class="w">${s.who==='rep'?'נציג':'לקוח'}</span><span>${esc(s.t)}</span>`;
     e.onclick=()=>{au.currentTime=s.s;au.play()};tr.appendChild(e);return e});
   const au=$('#au');
+  const marks=[...(ins&&ins.questions||[]),...(ins&&ins.moments||[])];
+  marks.forEach(m=>{let k=-1;for(let i=0;i<c.segments.length;i++){if(c.segments[i].s<=m.t+1)k=i;else break}if(k>=0)segEls[k].classList.add('star')});
+  document.querySelectorAll('.tl').forEach(b=>b.onclick=()=>{follow=true;au.currentTime=Math.max(0,+b.dataset.t-1);au.play()});
   $('#sp').onchange=e=>au.playbackRate=+e.target.value;
   tr.addEventListener('wheel',()=>{follow=false;clearTimeout(window._ft);window._ft=setTimeout(()=>follow=true,6000)});
   tr.addEventListener('touchmove',()=>{follow=false;clearTimeout(window._ft);window._ft=setTimeout(()=>follow=true,6000)});
