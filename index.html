@@ -7,7 +7,7 @@
 <style>
 :root{--bg:#0f1420;--panel:#171e2e;--panel2:#1e2740;--line:#2a3550;--txt:#e8ecf5;--mut:#8b97b5;--acc:#1E7FE8;--rep:#1E7FE8;--cli:#2bb673;--warn:#e8a31e}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,"Segoe UI",Arial,sans-serif;height:100vh;display:flex;flex-direction:column}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,"Segoe UI",Arial,sans-serif;height:100vh;height:100dvh;display:flex;flex-direction:column}
 header{padding:12px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px}
 header h1{font-size:18px;margin:0}header span{color:var(--mut);font-size:13px}
 main{flex:1;display:flex;min-height:0}
@@ -51,9 +51,29 @@ a{color:#8fc0ff}
 .tl:hover{background:#15402a}.tl .t{color:#6fe0a0;font-weight:700;direction:ltr;display:inline-block;margin-inline-end:8px}
 .tl q{display:block;color:#a9d9bd;font-size:12.5px;margin-top:2px}.tl small{display:block;color:#b7c4dd;margin-top:3px}
 .seg.star{box-shadow:inset -3px 0 0 #6fe0a0}
+#back,#tabs{display:none}
+@media (max-width:800px){
+  header{padding:10px 14px}header h1{font-size:16px}#cnt,#who{display:none}
+  main{display:block;position:relative;flex:1;min-height:0}
+  #list{width:100%;height:100%;border:0}
+  #view{position:absolute;inset:0;display:none;background:var(--bg)}
+  body.call #view{display:flex}body.call #list{display:none}
+  #back{display:inline-block;background:none;border:1px solid var(--line);color:#8fc0ff;border-radius:6px;padding:4px 10px;margin-bottom:6px;font-size:14px;cursor:pointer}
+  #head{padding:10px 14px}#head h2{font-size:18px}
+  #player{padding:8px 12px}#player audio{min-width:0;width:100%}
+  #tabs{display:flex;border-bottom:1px solid var(--line);background:var(--panel)}
+  #tabs button{flex:1;background:none;border:0;border-bottom:3px solid transparent;color:var(--mut);padding:11px;font-size:15px;font-weight:700;cursor:pointer}
+  #tabs button.on{color:#fff;border-bottom-color:var(--acc)}
+  #body{flex-direction:column}
+  #body[data-pane=side] #tr{display:none}#body[data-pane=tr] #side{display:none}
+  #tr,#side{flex:1;padding:12px 14px;border:0}
+  .seg{padding:8px 6px}.seg .tm{display:none}.seg .w{flex-basis:44px}
+  .tl{padding:10px 12px;font-size:14.5px}
+  #bar{padding:8px 10px;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap}#bar button{flex:0 0 auto}
+}
 details{margin-top:14px}summary{cursor:pointer;color:#8fc0ff;font-size:14px}
 #login{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:50}
-#login form{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px;width:320px;display:flex;flex-direction:column;gap:12px}
+#login form{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px;width:320px;max-width:90vw;display:flex;flex-direction:column;gap:12px}
 #login h2{margin:0 0 4px;font-size:20px}
 #login input{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:11px;font-size:15px}
 #login button{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:11px;font-size:15px;font-weight:700;cursor:pointer}
@@ -111,21 +131,26 @@ function open(c){
    ${ins.moments&&ins.moments.length?`<h3>⭐ רגעים חזקים</h3>${tlist(ins.moments,'m')}`:''}`:'';
   const rest=['התנגדויות','צרכים ובעיות','תגובה למחיר','שאלות מרכזיות של הלקוח','משימות המשך','מוצרים שעניינו','ביצועי הנציג','המלצות שיפור לנציג','משפטים שבנו אמון','הזדמנויות שהוחמצו'].map(h=>c.sections[h]?`<h3>${h}</h3><p>${esc(c.sections[h])}</p>`:'').join('');
   $('#view').innerHTML=`
-   <div id="head"><h2>${esc(c.client)}</h2>
+   <div id="head"><button id="back">‹ חזרה לרשימה</button><h2>${esc(c.client)}</h2>
     <div class="meta">${fmtDate(c.date)} · ${Math.round(c.durMin)} דקות · נציג: ${esc(c.rep)}</div>
     ${BORDER[c.id]?`<div class="note">${BORDER[c.id]}</div>`:''}</div>
    <div id="player"><audio id="au" controls src="${API}/audio/${c.id}?token=${encodeURIComponent(TOKEN)}"></audio>
      <select id="sp"><option>0.75</option><option selected>1</option><option>1.25</option><option>1.5</option><option>2</option></select></div>
-   <div id="body"><div id="tr"></div>
+   <div id="tabs"><button data-p="side" class="on">למה להקשיב</button><button data-p="tr">תמלול</button></div>
+   <div id="body" data-pane="side"><div id="tr"></div>
     <div id="side">${learn}<details><summary>עוד מניתוח ה-AI (סיכום, התנגדויות, ביצועי הנציג...)</summary><h3>📝 סיכום</h3><p>${esc(c.summary)}</p>${rest}</details></div></div>`;
   const tr=$('#tr');segEls=c.segments.map((s,i)=>{
     const e=document.createElement('div');e.className='seg '+s.who;
     e.innerHTML=`<span class="tm">${fmt(s.s)}</span><span class="w">${s.who==='rep'?'נציג':'לקוח'}</span><span>${esc(s.t)}</span>`;
     e.onclick=()=>{au.currentTime=s.s;au.play()};tr.appendChild(e);return e});
   const au=$('#au');
+  document.body.classList.add('call');
+  const setPane=p=>{$('#body').dataset.pane=p;document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));if(p==='tr'&&active>=0)setTimeout(()=>{const e=segEls[active];if(e)$('#tr').scrollTop=e.offsetTop-$('#tr').clientHeight/2},30)};
+  document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>setPane(b.dataset.p));
+  $('#back').onclick=()=>{au.pause();document.body.classList.remove('call')};
   const marks=[...(ins&&ins.questions||[]),...(ins&&ins.moments||[])];
   marks.forEach(m=>{let k=-1;for(let i=0;i<c.segments.length;i++){if(c.segments[i].s<=m.t+1)k=i;else break}if(k>=0)segEls[k].classList.add('star')});
-  document.querySelectorAll('.tl').forEach(b=>b.onclick=()=>{follow=true;au.currentTime=Math.max(0,+b.dataset.t-1);au.play()});
+  document.querySelectorAll('.tl').forEach(b=>b.onclick=()=>{setPane('tr');follow=true;au.currentTime=Math.max(0,+b.dataset.t-1);au.play()});
   $('#sp').onchange=e=>au.playbackRate=+e.target.value;
   tr.addEventListener('wheel',()=>{follow=false;clearTimeout(window._ft);window._ft=setTimeout(()=>follow=true,6000)});
   tr.addEventListener('touchmove',()=>{follow=false;clearTimeout(window._ft);window._ft=setTimeout(()=>follow=true,6000)});
